@@ -95,7 +95,7 @@ export function generateTeacherReports(target, container) {
         activeTiers.forEach(tier => {
             let bp = (state.blueprints[tier] || []).slice().sort((a, b) => a.s - b.s);
 
-            let html = `<div class="page-break" style="margin-bottom:30px;">`;
+            let html = `<div class="page-break">`;
             html += `<div style="text-align:center; margin-bottom:15px;">
                         <h1 style="font-size:24px; font-weight:900; margin:0; text-transform:uppercase;">${sanitize(state.schoolName || DEFAULT_SCHOOL_NAME)}</h1>
                         <h2 style="font-size:14px; font-weight:700; margin:5px 0 0 0; color:#475569; text-transform:uppercase;">TEACHER TIMETABLE (${tier.toUpperCase()} TIER): ${sanitize(tea.f)} (${sanitize(tea.d) || 'Teacher'})</h2>
