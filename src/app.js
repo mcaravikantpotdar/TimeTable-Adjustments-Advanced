@@ -56,9 +56,15 @@ document.addEventListener('keydown', (e) => {
 // Initialize cross-tab synchronization
 initStorageSync();
 
-// Bootstrap application on load
-window.onload = () => {
+// Bootstrap application safely regardless of module evaluation timing
+function bootstrap() {
     loadInitialState();
     render();
     document.getElementById('adjDate').value = new Date().toISOString().split('T')[0];
-};
+}
+
+if (document.readyState === 'complete') {
+    bootstrap();
+} else {
+    window.addEventListener('load', bootstrap);
+}
