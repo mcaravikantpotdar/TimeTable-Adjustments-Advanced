@@ -20,7 +20,8 @@ export function generateMatrixReport(container) {
     let T = E - S;
     if (T <= 0) return;
 
-    let html = `<div class="matrix-print-container">`;
+    let html = `<div class="matrix-print-wrapper">`;
+    html += `<div class="matrix-print-container">`;
     let currentTier = null;
     let sortedClasses = state.classes.slice().sort((a, b) => {
         const pA = parseInt(a.name) || 999;
@@ -49,9 +50,10 @@ export function generateMatrixReport(container) {
     });
     let subLeg = Array.from(usedSubs).map(s => `<b>${sanitize(s)}</b>: ${getFullSub(s)}`).join(' | ');
     let teaLeg = Array.from(usedTeas).map(t => `<b>${sanitize(t)}</b>: ${getFullTea(t)}`).join(' | ');
-    html += `<div style="margin-top:5px; font-size:8px; border-top:1px solid #000; padding-top:2px; text-align:center; line-height:1.2;">`;
+    html += `<div style="flex-shrink: 0; margin-top: 4px; font-size: 8px; border-top: 1px solid #000; padding-top: 2px; text-align: center; line-height: 1.2;">`;
     if (subLeg) html += `[SUBJECTS] ${subLeg} &nbsp;&nbsp;||&nbsp;&nbsp; `;
     if (teaLeg) html += `[TEACHERS] ${teaLeg}`;
+    html += `</div>`;
     html += `</div>`;
 
     container.innerHTML = html;
@@ -80,7 +82,7 @@ function renderMatrixRow(cls, S, T) {
         if (p.r) {
             html += `<div class="matrix-block recess" style="left:${leftP}%; width:${widthP}%;">RECESS</div>`;
         } else {
-            html += `<div class="matrix-block bg-white" style="left:${leftP}%; width:${widthP}%; display: flex; border-left: 1px solid #000;">`;
+            html += `<div class="matrix-block" style="background:#fff; left:${leftP}%; width:${widthP}%; display: flex; border-left: 1px solid #000;">`;
             let rulesForPeriod = state.rules.filter(r => r.class === cls.name && r.periodId === p.id && r.days.some(d => d));
             let splits = [];
             rulesForPeriod.forEach(r => {
@@ -102,9 +104,9 @@ function renderMatrixRow(cls, S, T) {
                     let br = idx < splits.length - 1 ? 'border-right: 1px solid #000;' : '';
 
                     if (splitCount > 3) {
-                        html += `<div style="flex:1; ${br} display:flex; align-items:center; justify-content:center; padding: 2px 0px; box-sizing: border-box; min-width: 0; overflow:hidden;">
-                            <div style="font-size: 10px; font-weight: 900; color: #000; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: center; font-family: 'Inter Tight', sans-serif;">
-                                ${sanitize(sp.sub) || '-'} <span style="background: #e2e8f0; padding: 2px 4px; border-radius: 4px; border: 1px solid #cbd5e1; margin: 2px 0; display: inline-block;">${sanitize(sp.tea) || '-'}</span> (${sp.days})
+                        html += `<div style="flex:1; ${br} display:flex; align-items:center; justify-content:center; padding: 1px 0px; box-sizing: border-box; min-width: 0; overflow:hidden;">
+                            <div style="font-size: 8.5px; line-height: 1; font-weight: 900; color: #000; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: center; font-family: 'Inter Tight', sans-serif;">
+                                ${sanitize(sp.sub) || '-'} <span style="background: #e2e8f0; padding: 1px 3px; border-radius: 3px; border: 1px solid #cbd5e1; margin: 1px 0; display: inline-block;">${sanitize(sp.tea) || '-'}</span> (${sp.days})
                             </div>
                         </div>`;
                     } else {
