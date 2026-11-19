@@ -1,5 +1,8 @@
 import { loadInitialState, initStorageSync, exportData, importData } from './state/storage.js';
 import { undo } from './state/history.js';
+import {
+    handleAuthButtonClick, openAuthModal, closeAuthModal, submitAuthPin, updateAuthBadge
+} from './state/auth.js';
 import { autoAdjust } from './core/autoAdjustEngine.js';
 import {
     updateTooltipPos, hideTooltip, showNameTooltip,
@@ -25,6 +28,8 @@ import { printTeacherDailySlips } from './print/teacherDocket.js';
 
 // Expose functions globally for inline HTML event handlers
 Object.assign(window, {
+    // Auth
+    handleAuthButtonClick, openAuthModal, closeAuthModal, submitAuthPin,
     // Grid & UI
     render, toggleSidebar, expandSidebar, updateSchoolName, wipeClear,
     handleGenericDrop, handleTargetedDrop, clearValue, deleteSplit,
@@ -59,6 +64,7 @@ initStorageSync();
 // Bootstrap application safely regardless of module evaluation timing
 function bootstrap() {
     loadInitialState();
+    updateAuthBadge();
     render();
     document.getElementById('adjDate').value = new Date().toISOString().split('T')[0];
 }
