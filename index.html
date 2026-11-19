@@ -13,7 +13,7 @@
     <div id="tooltip"></div>
     <div id="toast-container"></div> 
 
-    <header class="h-16 bg-white shadow-sm border-b-2 border-slate-300 flex justify-between items-center px-6 sticky top-0 z-[1000] flex-shrink-0">
+    <header class="h-16 glass-header border-b-2 border-slate-300 flex justify-between items-center px-6 sticky top-0 z-[1000] flex-shrink-0">
         <div class="flex items-center gap-4">
             <div class="h-10 w-10 bg-black rounded-lg flex items-center justify-center text-white font-black text-xl shadow-lg">LA</div>
             <div>
@@ -26,8 +26,9 @@
                 </div>
             </div>
         </div>
-        <div class="flex items-center gap-3">
-            <input type="range" min="0.5" max="1.5" step="0.05" value="1" oninput="document.documentElement.style.setProperty('--grid-scale', this.value)" class="mr-2">
+        <div class="flex items-center gap-2.5">
+            <button id="authStatusBtn" onclick="handleAuthButtonClick()" class="bg-slate-100 text-slate-600 border border-slate-300 px-3 py-1.5 rounded-xl text-[10px] font-black hover:bg-slate-200 transition cursor-pointer">🔒 READ-ONLY</button>
+            <input type="range" min="0.5" max="1.5" step="0.05" value="1" oninput="document.documentElement.style.setProperty('--grid-scale', this.value)" class="mr-1">
             <button onclick="openReportModal()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-700 transition shadow-lg">REPORTS 🖨️</button>
             <button onclick="openAdjustments()" class="bg-purple-600 text-white px-4 py-2 rounded-xl text-[10px] font-black hover:bg-purple-700 transition shadow-lg">ADJUSTMENTS</button>
             <div class="w-px h-6 bg-slate-300 mx-1"></div>
@@ -69,6 +70,20 @@
             <div class="show-on-collapse">« TEACHERS</div>
             <div id="teaPool" class="overflow-y-auto custom-scroll p-3 flex-1 hide-on-collapse"></div>
         </aside>
+    </div>
+
+    <!-- ADMIN AUTH MODAL -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[50000] glass-backdrop">
+        <div class="bg-white p-7 rounded-2xl shadow-2xl w-80 border border-slate-200">
+            <h2 class="font-black uppercase text-base mb-1 text-slate-800">Admin Verification</h2>
+            <p class="text-[11px] text-slate-500 font-medium mb-4">Enter PIN to modify timetable, staff, or daily substitutions.</p>
+            <input id="authPinInput" type="password" inputmode="numeric" maxlength="12" placeholder="Enter Admin PIN" onkeydown="if(event.key==='Enter') submitAuthPin()" class="w-full border-2 border-slate-300 p-2.5 rounded-xl mb-2 text-center font-black tracking-widest text-base outline-none focus:border-indigo-500 transition">
+            <p id="authError" class="text-[11px] font-bold text-rose-600 min-h-[16px] mb-3 text-center"></p>
+            <div class="flex gap-2">
+                <button onclick="submitAuthPin()" class="flex-1 bg-indigo-600 text-white p-2.5 rounded-xl font-black text-xs hover:bg-indigo-700 transition shadow-sm">UNLOCK</button>
+                <button onclick="closeAuthModal()" class="flex-1 bg-slate-100 text-slate-600 p-2.5 rounded-xl font-black text-xs hover:bg-slate-200 transition">CANCEL</button>
+            </div>
+        </div>
     </div>
 
     <!-- DAILY ADJUSTMENTS MODAL -->
@@ -118,7 +133,7 @@
     </div>
 
     <!-- REPORT MODAL -->
-    <div id="reportModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[40000] backdrop-blur-sm">
+    <div id="reportModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[40000] glass-backdrop">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 border-2 border-slate-200">
             <h2 class="font-black uppercase text-xl mb-6 border-b-2 border-slate-100 pb-3 text-slate-800">Generate Report</h2>
             
@@ -143,7 +158,7 @@
     <div id="reportLayout" class="print-only"></div>
 
     <!-- REGISTRY MODAL -->
-    <div id="regModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] backdrop-blur-sm">
+    <div id="regModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] glass-backdrop">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-80 border-2 border-black">
             <h2 id="modalTitle" class="font-black uppercase text-sm mb-4 border-b-2 pb-2">Entry Manager</h2>
             <input id="modalShort" type="text" placeholder="Short Form" class="w-full border-2 p-2 rounded mb-2 uppercase font-black">
@@ -157,7 +172,7 @@
     </div>
 
     <!-- CLASS MODAL -->
-    <div id="clsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] backdrop-blur-sm">
+    <div id="clsModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] glass-backdrop">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-72 border-2 border-black">
             <h2 id="clsTitle" class="font-black uppercase text-sm mb-4 border-b-2 pb-2">Class Manager</h2>
             <input id="clsName" type="text" placeholder="e.g. 10TH" class="w-full border-2 p-2 rounded mb-4 uppercase font-black text-center text-lg outline-none focus:border-indigo-400">
@@ -169,7 +184,7 @@
     </div>
 
     <!-- PERIOD MODAL -->
-    <div id="perModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] backdrop-blur-sm">
+    <div id="perModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[20000] glass-backdrop">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-80 border-2 border-black">
             <h2 id="perTitle" class="font-black uppercase text-sm mb-4 border-b-2 pb-2">Period Guardian</h2>
             <input id="perName" type="text" placeholder="P1, P2, etc." class="w-full border-2 p-2 rounded mb-2 uppercase font-black">
