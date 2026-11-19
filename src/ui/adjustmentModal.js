@@ -1,13 +1,16 @@
 import { state, adjustState, getFullSub, getFullTea } from '../state/store.js';
 import { sanitize, formatTime } from '../utils/helpers.js';
+import { requireAdmin } from '../state/auth.js';
 import { getRuleDetails, checkAbsoluteTimeClash, isOverlapping } from '../core/clashEngine.js';
 import { getLiveTeacherLoad } from '../core/workloadEngine.js';
 import { showToast } from './notifications.js';
 
 export function openAdjustments() {
-    document.getElementById('adjModal').style.display = 'flex';
-    goToSetupView();
-    renderAdjTeachers();
+    requireAdmin(() => {
+        document.getElementById('adjModal').style.display = 'flex';
+        goToSetupView();
+        renderAdjTeachers();
+    });
 }
 
 export function closeAdjustments() {
@@ -58,10 +61,12 @@ export function renderAdjTeachers() {
         card.className = `absent-card ${isAbs ? 'is-absent' : ''}`;
         card.innerHTML = `<div class="font-black text-base mb-1">${sanitize(t.f)}</div><div class="text-[10px] font-bold opacity-60 uppercase tracking-wide">[${sanitize(t.d) || 'No Desig'}]</div>`;
         card.onclick = () => {
-            if (isAbs) adjustState.absent = adjustState.absent.filter(x => x !== t.s);
-            else adjustState.absent.push(t.s);
-            localStorage.setItem(`architect_absent_${adjustState.dateStr}`, JSON.stringify(adjustState.absent));
-            renderAdjTeachers();
+            requireAdmin(() => {
+                if (isAbs) adjustState.absent = adjustState.absent.filter(x => x !== t.s);
+                else adjustState.absent.push(t.s);
+                localStorage.setItem(`architect_absent_${adjustState.dateStr}`, JSON.stringify(adjustState.absent));
+                renderAdjTeachers();
+            });
         };
         grid.appendChild(card);
     });
@@ -183,34 +188,40 @@ export function renderAdjBoard() {
 
 export function assignCover(ruleId, teaCode) {
     if (!teaCode) return;
-    const targetRule = state.rules.find(r => r.id === ruleId);
-    if (!targetRule) return;
-    const tDet = getRuleDetails(targetRule);
-    if (!tDet) return;
+    requireAdmin(() => {
+        const targetRule = state.rules.find(r => r.id === ruleId);
+        if (!targetRule) return;
+        const tDet = getRuleDetails(targetRule);
+        if (!tDet) return;
 
-    let isBusy = checkAbsoluteTimeClash(teaCode, tDet.s, tDet.e, adjustState.dayIndex);
-    Object.entries(adjustState.covers).forEach(([rId, sCode]) => {
-        if (sCode === teaCode) {
-            const d = getRuleDetails(state.rules.find(x => x.id === rId));
-            if (d && isOverlapping(tDet.s, tDet.e, d.s, d.e)) isBusy = true;
+        let isBusy = checkAbsoluteTimeClash(teaCode, tDet.s, tDet.e, adjustState.dayIndex);
+        Object.entries(adjustState.covers).forEach(([rId, sCode]) => {
+            if (sCode === teaCode) {
+                const d = getRuleDetails(state.rules.find(x => x.id === rId));
+                if (d && isOverlapping(tDet.s, tDet.e, d.s, d.e)) isBusy = true;
+            }
+        });
+
+        if (isBusy) {
+            showToast(`⚠️ ${getFullTea(teaCode)} is engaged!`, "error");
+            return;
         }
+        adjustState.covers[ruleId] = teaCode;
+        renderAdjBoard();
     });
-
-    if (isBusy) {
-        showToast(`⚠️ ${getFullTea(teaCode)} is engaged!`, "error");
-        return;
-    }
-    adjustState.covers[ruleId] = teaCode;
-    renderAdjBoard();
 }
 
 export function removeCover(ruleId) {
-    delete adjustState.covers[ruleId];
-    renderAdjBoard();
+    requireAdmin(() => {
+        delete adjustState.covers[ruleId];
+        renderAdjBoard();
+    });
 }
 
 export function clearAllCovers() {
-    adjustState.covers = {};
-    renderAdjBoard();
-    showToast("Substitutes cleared.", "info");
+    requireAdmin(() => {
+        adjustState.covers = {};
+        renderAdjBoard();
+        showToast("Substitutes cleared.", "info");
+    });
 }
