@@ -3,6 +3,7 @@ import { state, adjustState, uiState } from '../state/store.js';
 import { sanitize, minToPx, formatTime, generateId } from '../utils/helpers.js';
 import { saveStateToHistory } from '../state/history.js';
 import { saveMainState } from '../state/storage.js';
+import { requireAdmin } from '../state/auth.js';
 import { auditClashes, checkClash } from '../core/clashEngine.js';
 import { calculateWorkload } from '../core/workloadEngine.js';
 import { hideTooltip, showNameTooltip, showToast } from './notifications.js';
@@ -18,19 +19,23 @@ export function expandSidebar(e, id) {
 }
 
 export function updateSchoolName(val) {
-    state.schoolName = val || DEFAULT_SCHOOL_NAME;
-    saveStateToHistory();
-    saveMainState();
+    requireAdmin(() => {
+        state.schoolName = val || DEFAULT_SCHOOL_NAME;
+        saveStateToHistory();
+        saveMainState();
+    });
 }
 
 export function wipeClear() {
-    if (confirm("DANGER: Wipe all schedule assignments? (Classes, Teachers, and Subjects will remain intact)")) {
-        saveStateToHistory();
-        state.rules = [];
-        saveMainState();
-        render();
-        showToast("Schedule wiped.", "error");
-    }
+    requireAdmin(() => {
+        if (confirm("DANGER: Wipe all schedule assignments? (Classes, Teachers, and Subjects will remain intact)")) {
+            saveStateToHistory();
+            state.rules = [];
+            saveMainState();
+            render();
+            showToast("Schedule wiped.", "error");
+        }
+    });
 }
 
 export function render() {
@@ -194,97 +199,108 @@ function createRow(cls, clashMap) {
 
 export function handleGenericDrop(e, cls, pId) {
     e.preventDefault();
-    saveStateToHistory();
-    const cleanVal = uiState.dragged.val ? uiState.dragged.val.trim() : '';
+    const item = uiState.dragged;
+    if (!item) return;
+    requireAdmin(() => {
+        saveStateToHistory();
+        const cleanVal = item.val ? item.val.trim() : '';
 
-    let existingRule = state.rules.find(r => r.class === cls && r.periodId === pId &&
-        ((!r.sub && !r.tea) || (uiState.dragged.type === 'tea' && !r.tea) || (uiState.dragged.type === 'sub' && !r.sub))
-    );
+        let existingRule = state.rules.find(r => r.class === cls && r.periodId === pId &&
+            ((!r.sub && !r.tea) || (item.type === 'tea' && !r.tea) || (item.type === 'sub' && !r.sub))
+        );
 
-    if (existingRule) {
-        if (uiState.dragged.type === 'sub') existingRule.sub = cleanVal;
-        else existingRule.tea = cleanVal;
-        uiState.activeRuleId = existingRule.id;
-    } else {
-        const rid = generateId('r');
-        const nr = {
-            id: rid,
-            class: cls,
-            periodId: pId,
-            sub: uiState.dragged.type === 'sub' ? cleanVal : '',
-            tea: uiState.dragged.type === 'tea' ? cleanVal : '',
-            days: [false, false, false, false, false, false]
-        };
-        state.rules.push(nr);
-        uiState.activeRuleId = rid;
-    }
-    saveMainState();
-    render();
+        if (existingRule) {
+            if (item.type === 'sub') existingRule.sub = cleanVal;
+            else existingRule.tea = cleanVal;
+            uiState.activeRuleId = existingRule.id;
+        } else {
+            const rid = generateId('r');
+            const nr = {
+                id: rid,
+                class: cls,
+                periodId: pId,
+                sub: item.type === 'sub' ? cleanVal : '',
+                tea: item.type === 'tea' ? cleanVal : '',
+                days: [false, false, false, false, false, false]
+            };
+            state.rules.push(nr);
+            uiState.activeRuleId = rid;
+        }
+        saveMainState();
+        render();
+    });
 }
 
 export function handleTargetedDrop(e, rid, type) {
     e.preventDefault();
     e.stopPropagation();
-    if (uiState.dragged.type !== type) return;
-    const r = state.rules.find(x => x.id === rid);
-    if (!r) return;
-    const cleanVal = uiState.dragged.val ? uiState.dragged.val.trim() : '';
+    const item = uiState.dragged;
+    if (!item || item.type !== type) return;
+    requireAdmin(() => {
+        const r = state.rules.find(x => x.id === rid);
+        if (!r) return;
+        const cleanVal = item.val ? item.val.trim() : '';
 
-    if (type === 'tea') {
-        for (let i = 0; i < 6; i++) {
-            if (r.days && r.days[i] && checkClash(cleanVal, i, r.class, r.periodId, r.id)) {
-                showToast(`⚠️ Rejection: Clash detected on ${DAY_NAMES[i]} for this slot.`, 'error');
+        if (type === 'tea') {
+            for (let i = 0; i < 6; i++) {
+                if (r.days && r.days[i] && checkClash(cleanVal, i, r.class, r.periodId, r.id)) {
+                    showToast(`⚠️ Rejection: Clash detected on ${DAY_NAMES[i]} for this slot.`, 'error');
+                    return;
+                }
+            }
+        }
+        saveStateToHistory();
+
+        const activeDaysCount = r.days.filter(d => d).length;
+        if (activeDaysCount > 1 && adjustState.dayIndex !== -1) {
+            const dIdx = adjustState.dayIndex;
+            if (r.days[dIdx]) {
+                r.days[dIdx] = false;
+                const splitId = generateId('r');
+                const splitRule = JSON.parse(JSON.stringify(r));
+                splitRule.id = splitId;
+                splitRule.days = [false, false, false, false, false, false];
+                splitRule.days[dIdx] = true;
+                splitRule[type] = cleanVal;
+                state.rules.push(splitRule);
+                saveMainState();
+                render();
                 return;
             }
         }
-    }
-    saveStateToHistory();
 
-    const activeDaysCount = r.days.filter(d => d).length;
-    if (activeDaysCount > 1 && adjustState.dayIndex !== -1) {
-        const dIdx = adjustState.dayIndex;
-        if (r.days[dIdx]) {
-            r.days[dIdx] = false;
-            const splitId = generateId('r');
-            const splitRule = JSON.parse(JSON.stringify(r));
-            splitRule.id = splitId;
-            splitRule.days = [false, false, false, false, false, false];
-            splitRule.days[dIdx] = true;
-            splitRule[type] = cleanVal;
-            state.rules.push(splitRule);
-            saveMainState();
-            render();
-            return;
-        }
-    }
-
-    r[type] = cleanVal;
-    saveMainState();
-    render();
+        r[type] = cleanVal;
+        saveMainState();
+        render();
+    });
 }
 
 export function clearValue(e, rid, type) {
     e.stopPropagation();
-    saveStateToHistory();
-    const r = state.rules.find(x => x.id === rid);
-    if (r) {
-        r[type] = '';
-        if (!r.sub.trim() && !r.tea.trim()) {
-            state.rules = state.rules.filter(x => x.id !== rid);
-            if (uiState.activeRuleId === rid) uiState.activeRuleId = null;
+    requireAdmin(() => {
+        saveStateToHistory();
+        const r = state.rules.find(x => x.id === rid);
+        if (r) {
+            r[type] = '';
+            if (!r.sub.trim() && !r.tea.trim()) {
+                state.rules = state.rules.filter(x => x.id !== rid);
+                if (uiState.activeRuleId === rid) uiState.activeRuleId = null;
+            }
         }
-    }
-    saveMainState();
-    render();
+        saveMainState();
+        render();
+    });
 }
 
 export function deleteSplit(e, rid) {
     e.stopPropagation();
-    saveStateToHistory();
-    state.rules = state.rules.filter(r => r.id !== rid);
-    if (uiState.activeRuleId === rid) uiState.activeRuleId = null;
-    saveMainState();
-    render();
+    requireAdmin(() => {
+        saveStateToHistory();
+        state.rules = state.rules.filter(r => r.id !== rid);
+        if (uiState.activeRuleId === rid) uiState.activeRuleId = null;
+        saveMainState();
+        render();
+    });
 }
 
 export function getDayLabel(days) {
@@ -313,18 +329,20 @@ function createDayStrip(rule) {
 
 export function toggleAllDays(e, rid, currentlyAll) {
     e.stopPropagation();
-    saveStateToHistory();
-    const r = state.rules.find(x => x.id === rid);
-    if (!r) return;
-    if (currentlyAll) {
-        r.days = [false, false, false, false, false, false];
-    } else {
-        for (let i = 0; i < 6; i++) {
-            if (!checkClash(r.tea, i, r.class, r.periodId, r.id)) r.days[i] = true;
+    requireAdmin(() => {
+        saveStateToHistory();
+        const r = state.rules.find(x => x.id === rid);
+        if (!r) return;
+        if (currentlyAll) {
+            r.days = [false, false, false, false, false, false];
+        } else {
+            for (let i = 0; i < 6; i++) {
+                if (!checkClash(r.tea, i, r.class, r.periodId, r.id)) r.days[i] = true;
+            }
         }
-    }
-    saveMainState();
-    render();
+        saveMainState();
+        render();
+    });
 }
 
 export function toggleStrip(e, id) {
@@ -335,16 +353,18 @@ export function toggleStrip(e, id) {
 
 export function toggleDay(e, rid, idx, clash) {
     e.stopPropagation();
-    const r = state.rules.find(x => x.id === rid);
-    if (!r || !r.days) return;
-    if (clash && !r.days[idx]) {
-        showToast("Cannot assign: Clash detected.", "error");
-        return;
-    }
-    saveStateToHistory();
-    r.days[idx] = !r.days[idx];
-    saveMainState();
-    render();
+    requireAdmin(() => {
+        const r = state.rules.find(x => x.id === rid);
+        if (!r || !r.days) return;
+        if (clash && !r.days[idx]) {
+            showToast("Cannot assign: Clash detected.", "error");
+            return;
+        }
+        saveStateToHistory();
+        r.days[idx] = !r.days[idx];
+        saveMainState();
+        render();
+    });
 }
 
 export function closeAllStrips(e) {
