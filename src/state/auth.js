@@ -1,11 +1,11 @@
 import { showToast } from '../ui/notifications.js';
 
-// SHA-256 hex hash for default PIN "2026"
-// To set a custom PIN, hash your PIN with SHA-256 and replace this value.
-const ADMIN_PIN_HASH = 'b3a8e0e1f9ab1bfe3a36f231f676f78bb30a519d2b21e6c530c0eee8ebb4a5d0';
+// Set your desired Admin PIN here
+const CONFIGURED_PIN = '2026';
 const SESSION_KEY = 'architect_admin_auth_v1';
 
 let pendingAction = null;
+let expectedHashCache = null;
 
 export function isAdminUnlocked() {
     return sessionStorage.getItem(SESSION_KEY) === 'true';
@@ -76,8 +76,14 @@ export async function submitAuthPin() {
         return;
     }
 
-    const digest = await hashPin(rawPin);
-    const valid = digest ? (digest === ADMIN_PIN_HASH) : (rawPin === '2026');
+    const enteredHash = await hashPin(rawPin);
+    if (!expectedHashCache && enteredHash) {
+        expectedHashCache = await hashPin(CONFIGURED_PIN);
+    }
+
+    const valid = (enteredHash && expectedHashCache)
+        ? (enteredHash === expectedHashCache)
+        : (rawPin === CONFIGURED_PIN);
 
     if (valid) {
         sessionStorage.setItem(SESSION_KEY, 'true');
